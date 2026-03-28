@@ -30,7 +30,7 @@ As demonstrated in our experiments, the DSCN agent reliably converges to the opt
 ## Running the Code
 ```bash
 # Clone the repository
-git clone [https://github.com/lalvear/dscn-agent.git](https://github.com/lalvear/dscn-agent.git)
+git clone [https://github.com/Rylow999/dscn-agent.git](https://github.com/Rylow999/dscn-agent.git)
 cd dscn-agent
 
 # Install dependencies (requires numpy, matplotlib)
