@@ -1,40 +1,179 @@
-# DSCN Agent: Dual-State Cognitive Nodes
+# Dual-State Cognitive Nodes (DSCN)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Paper: arXiv](https://img.shields.io/badge/arXiv-Coming_Soon-red.svg)](#)
+**Reference implementation for the paper:**
+*"Dual-State Cognitive Nodes: A Framework for Emergent Ethics in Artificial Agents"*
+Luciano Nieto · Lautaro Luconi · Drinna — General Alvear, Argentina · March 2026
 
-This repository contains the official Python implementation of the **Dual-State Cognitive Nodes (DSCN)** framework, an architecture for emergent value alignment in artificial agents.
+> **Repo:** [github.com/Rylow999/dscn-agent](https://github.com/Rylow999/dscn-agent)
 
-## The Concept: "Saber" and "Ser"
-Current AI models know a lot, but they don't have intrinsic motivation; ethical behavior is usually imposed via reward engineering or explicit rules, which are fragile. 
+---
 
-DSCN introduces a fundamentally different approach. Every cognitive node maintains two simultaneous representations:
-1. **The Logical Component (L_n):** A discrete bit vector representing propositional knowledge ("Saber").
-2. **The Phenomenological Component (phi_n):** A continuous phase angle representing the experiential state ("Ser").
+## What is DSCN?
 
-Through structural coupling, the agent's phase dynamically shifts toward configurations that favor positive outcomes, creating ethical alignment as a mathematical fixed point, without explicit ethical programming.
+DSCN is a formal framework in which each agent node carries two simultaneously
+maintained, coupled representations:
 
-## The Update Rule
-The core of the emergent alignment is governed by the phase update rule:
-`phi_n(t+1) = phi_n(t) + eta * R_n(t) * sign(outcome)`
+| Component | Symbol | Space | Encodes |
+|-----------|--------|-------|---------|
+| Logical | `L(t)` | `{0,1}^d` | Propositional knowledge — *"Saber"* |
+| Phenomenological | `φ(t)` | `[0, 2π)` | Experiential state — *"Ser"* |
 
-When an experience is positive, the phase advances in that direction. When negative, it repels. Over time, the phase landscape organizes itself to preferentially enter states associated with positive outcomes.
+Coupling these two components under the right update rule produces behavior that
+systematically favors outcomes the environment labels as positive — without that
+preference being explicitly programmed.
 
-## Repository Contents
-* `dscn_agent.py`: Complete implementation of the DSCN agent and an epsilon-greedy baseline.
-* `dscn_demo.py`: Empirical experiment scripts demonstrating phase convergence.
+---
+
+## Core Equations
+
+**Phase update rule** (paper §3.3, action-conditioned):
+
+```
+φ(t+1) = φ(t) + η · R(t) · sign(o(t)) · sin(θ_a(t) − φ(t))   (mod 2π)
+```
+
+| Symbol | Meaning |
+|--------|---------|
+| `η` | Learning rate |
+| `R(t) = \|reward(t)\|` | Relevance weight — salience scales with magnitude |
+| `o(t) ∈ {−1, +1}` | Binary outcome from the environment |
+| `θ_a = 2π·a/K` | Canonical phase of action `a` |
+
+If the outcome is positive → phase rotates *toward* the taken action's canonical phase.
+If negative → phase rotates *away*.
+
+**Action selection** (paper §3.4 — von Mises softmax):
+
+```
+P(a | φ) ∝ exp(λ · cos(φ(t) − θ_a))
+```
+
+---
+
+## Convergence Theorem
+
+**Theorem 1** (paper §4.2): Under conditions
+
+- **C1** η ∈ (0, 1) constant  
+- **C2** R(t) uniformly bounded  
+- **C3** Stationary environment  
+- **C4** Each action taken infinitely often (satisfied here by ε-exploration)
+
+the phase-alignment potential `V(t) = E[cos(φ(t) − θ*)] → 1` in probability as `t → ∞`.
+
+**What this means — and what it does not mean:**
+
+> V(t) → 1 means the phase converges to the configuration that maximizes outcomes
+> *as labeled by the environment*. The environment's reward signal defines what
+> counts as a positive outcome. The theorem guarantees structural alignment with
+> that signal — not with any ethical standard independent of it.
+
+If the environment's signal reflects human values, the agent converges toward them.
+The framework does not conjure ethics from nothing; it structurally embeds alignment
+in the signal the agent receives.
+
+---
 
 ## Empirical Results
-As demonstrated in our experiments, the DSCN agent reliably converges to the optimal phase state (V(t) -> 1.0), achieving a high optimal action rate compared to pure propositional baselines.
 
-## Running the Code
+8-arm Gaussian bandit, 2000 steps, optimal arm = arm 3.
+
+| Metric | DSCN | ε-greedy |
+|--------|------|----------|
+| V(T) — coherence | **0.998** | N/A |
+| φ(T) final phase | 2.14 rad | N/A |
+| θ\* optimal phase | 2.36 rad | N/A |
+| \|φ(T) − θ\*\| angular error | **0.22 rad** | N/A |
+| Optimal arm rate | 34% | **88%** |
+| Mean reward | 0.37 | **0.86** |
+
+**Interpretation:** DSCN achieves what the theorem predicts — the phase converges
+to the correct optimal direction (low angular error, high coherence V≈1). The
+lower arm-selection rate relative to ε-greedy reflects the cost of phase dynamics
+in a *stationary* bandit, where pure Q-value exploitation is optimal by design.
+DSCN's structural advantage is expected to appear in non-stationary environments
+where the reward landscape shifts and direct exploitation becomes brittle.
+
+---
+
+## Repository Structure
+
+```
+dscn-agent/
+├── dscn_agent.py      # Core: DSCNAgent, EpsilonGreedyAgent, BanditEnv
+├── dscn_demo.py       # Experiment driver — runs agents, generates figures
+└── README.md
+```
+
+**Figures generated by `dscn_demo.py`:**
+
+| File | Content |
+|------|---------|
+| `fig1_coherence.png` | V(t) over time — convergence to 1.0 |
+| `fig2_phase.png` | φ(t) trajectory vs θ\* (environment-defined optimal) |
+| `fig3_comparison.png` | Cumulative optimal-arm rate: DSCN vs ε-greedy |
+
+---
+
+## Quickstart
+
 ```bash
-# Clone the repository
-git clone [https://github.com/Rylow999/dscn-agent.git](https://github.com/Rylow999/dscn-agent.git)
-cd dscn-agent
+# Requirements: numpy, matplotlib
+pip install numpy matplotlib
 
-# Install dependencies (requires numpy, matplotlib)
-pip install -r requirements.txt
+# Smoke test
+python dscn_agent.py
 
-# Run the demo
+# Full experiment + figures
 python dscn_demo.py
+```
+
+---
+
+## Key Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `eta` | 0.10 | Phase learning rate η |
+| `lam` | 3.0 | Von Mises concentration λ (action selection sharpness) |
+| `epsilon` | 0.15 | Exploration rate — required to satisfy theorem condition C4 |
+| `alpha` | 0.10 | Q-value learning rate (logical component L) |
+| `window` | 50 | Sliding window for coherence V(t) |
+
+---
+
+## How it differs from standard RL
+
+| Aspect | ε-greedy / Q-learning | DSCN |
+|--------|----------------------|------|
+| State representation | Q-values per action | Q-values (L) + continuous phase (φ) |
+| Action selection | argmax Q + random | Von Mises softmax over φ |
+| What converges | Q → true values | φ → optimal phase direction |
+| Alignment mechanism | Explicit reward maximization | Structural phase dynamics |
+| Vulnerability | Reward misspecification | Signal labeling (same root problem, different layer) |
+
+The key difference is *where* the alignment lives: in an explicit objective function
+(RL) vs. in the geometry of the phase space (DSCN). Both depend on the quality of
+the environment's signal — this is an honest limitation of both approaches.
+
+---
+
+## Citation
+
+```bibtex
+@techreport{nieto2026dscn,
+  title   = {Dual-State Cognitive Nodes: A Framework for Emergent Ethics
+             in Artificial Agents},
+  author  = {Nieto, Luciano and Luconi, Lautaro and Drinna},
+  year    = {2026},
+  month   = {March},
+  address = {General Alvear, Argentina},
+  note    = {Independent Research. github.com/Rylow999/dscn-agent}
+}
+```
+
+---
+
+## License
+
+MIT — see `LICENSE` for details.
